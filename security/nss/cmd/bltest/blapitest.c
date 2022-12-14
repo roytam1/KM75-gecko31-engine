@@ -56,8 +56,7 @@ char *testdir = NULL;
 #define TIMEMARK(seconds) \
     time1 = PR_SecondsToInterval(seconds); \
     { \
-        PRInt64 tmp, L100; \
-        LL_I2L(L100, 100); \
+        PRInt64 tmp; \
         if (time2 == 0) { \
             time2 = 1; \
         } \
@@ -313,7 +312,6 @@ serialize_key(SECItem *it, int ni, PRFileDesc *file)
 {
     unsigned char len[4];
     int i;
-    SECStatus status;
     NSSBase64Encoder *cx;
     cx = NSSBase64Encoder_Create(output_ascii, file);
     for (i=0; i<ni; i++, it++) {
@@ -321,11 +319,11 @@ serialize_key(SECItem *it, int ni, PRFileDesc *file)
 	len[1] = (it->len >> 16) & 0xff;
 	len[2] = (it->len >>  8) & 0xff;
 	len[3] = (it->len	 & 0xff);
-	status = NSSBase64Encoder_Update(cx, len, 4);
-	status = NSSBase64Encoder_Update(cx, it->data, it->len);
+	NSSBase64Encoder_Update(cx, len, 4);
+	NSSBase64Encoder_Update(cx, it->data, it->len);
     }
-    status = NSSBase64Encoder_Destroy(cx, PR_FALSE);
-    status = PR_Write(file, "\r\n", 2);
+    NSSBase64Encoder_Destroy(cx, PR_FALSE);
+    PR_Write(file, "\r\n", 2);
 }
 
 void
@@ -615,6 +613,17 @@ typedef SECStatus (* bltestSymmCipherFn)(void *cx,
 					 const unsigned char *input,
 					 unsigned int inputLen);
 
+typedef SECStatus (* bltestAEADFn)(void *cx,
+                                   unsigned char *output,
+                                   unsigned int *outputLen,
+                                   unsigned int maxOutputLen,
+                                   const unsigned char *input,
+                                   unsigned int inputLen,
+                                   const unsigned char *nonce,
+                                   unsigned int nonceLen,
+                                   const unsigned char *ad,
+                                   unsigned int adLen);
+
 typedef SECStatus (* bltestPubKeyCipherFn)(void *key,
 					   SECItem *output,
 					   const SECItem *input);
@@ -648,6 +657,7 @@ typedef enum {
     bltestCAMELLIA_CBC,   /* .                     */
     bltestSEED_ECB,       /* SEED algorithm	   */
     bltestSEED_CBC,       /* SEED algorithm	   */
+    bltestCHACHA20,       /* ChaCha20 + Poly1305   */
     bltestRSA,            /* Public Key Ciphers    */
     bltestRSA_OAEP,       /* . (Public Key Enc.)   */
     bltestRSA_PSS,        /* . (Public Key Sig.)   */
@@ -687,6 +697,7 @@ static char *mode_strings[] =
     "camellia_cbc",
     "seed_ecb",
     "seed_cbc",
+    "chacha20_poly1305",
     "rsa",
     "rsa_oaep",
     "rsa_pss",
@@ -807,6 +818,7 @@ struct  bltestCipherInfoStr {
     /* Cipher function (encrypt/decrypt/sign/verify/hash) */
     union {
 	bltestSymmCipherFn   symmkeyCipher;
+	bltestAEADFn         aeadCipher;
 	bltestPubKeyCipherFn pubkeyCipher;
 	bltestHashCipherFn   hashCipher;
     } cipher;
@@ -829,12 +841,28 @@ is_symmkeyCipher(bltestCipherMode mode)
 }
 
 PRBool
+is_aeadCipher(bltestCipherMode mode)
+{
+    /* change as needed! */
+    switch (mode) {
+	case bltestCHACHA20:
+	    return PR_TRUE;
+	default:
+	    return PR_FALSE;
+    }
+}
+
+PRBool
 is_authCipher(bltestCipherMode mode)
 {
     /* change as needed! */
-    if (mode == bltestAES_GCM)
-	return PR_TRUE;
-    return PR_FALSE;
+    switch (mode) {
+	case bltestAES_GCM:
+	case bltestCHACHA20:
+	    return PR_TRUE;
+	default:
+	    return PR_FALSE;
+    }
 }
 
 
@@ -842,11 +870,14 @@ PRBool
 is_singleShotCipher(bltestCipherMode mode)
 {
     /* change as needed! */
-    if (mode == bltestAES_GCM)
-	return PR_TRUE;
-    if (mode == bltestAES_CTS)
-	return PR_TRUE;
-    return PR_FALSE;
+    switch (mode) {
+	case bltestAES_GCM:
+	case bltestAES_CTS:
+	case bltestCHACHA20:
+	    return PR_TRUE;
+	default:
+	    return PR_FALSE;
+    }
 }
 
 PRBool
@@ -880,16 +911,24 @@ PRBool
 cipher_requires_IV(bltestCipherMode mode)
 {
     /* change as needed! */
-    if (mode == bltestDES_CBC || mode == bltestDES_EDE_CBC ||
-	mode == bltestRC2_CBC || 
+    switch (mode) {
+	case bltestDES_CBC:
+	case bltestDES_EDE_CBC:
+	case bltestRC2_CBC:
 #ifdef NSS_SOFTOKEN_DOES_RC5
-	mode == bltestRC5_CBC ||
+	case bltestRC5_CBC:
 #endif
-	mode == bltestAES_CBC || mode == bltestAES_CTS || 
-	mode == bltestAES_CTR || mode == bltestAES_GCM ||
-	mode == bltestCAMELLIA_CBC || mode == bltestSEED_CBC)
-	return PR_TRUE;
-    return PR_FALSE;
+	case bltestAES_CBC:
+	case bltestAES_CTS:
+	case bltestAES_CTR:
+	case bltestAES_GCM:
+	case bltestCAMELLIA_CBC:
+	case bltestSEED_CBC:
+	case bltestCHACHA20:
+	    return PR_TRUE;
+	default:
+	    return PR_FALSE;
+    }
 }
 
 SECStatus finishIO(bltestIO *output, PRFileDesc *file);
@@ -1126,6 +1165,30 @@ aes_Decrypt(void *cx, unsigned char *output, unsigned int *outputLen,
 {
     return AES_Decrypt((AESContext *)cx, output, outputLen, maxOutputLen,
                        input, inputLen);
+}
+
+SECStatus
+chacha20_poly1305_Encrypt(void *cx, unsigned char *output,
+                         unsigned int *outputLen, unsigned int maxOutputLen,
+                         const unsigned char *input, unsigned int inputLen,
+                         const unsigned char *nonce, unsigned int nonceLen,
+                         const unsigned char *ad, unsigned int adLen)
+{
+    return ChaCha20Poly1305_Seal((ChaCha20Poly1305Context *)cx, output,
+                                 outputLen, maxOutputLen, input, inputLen,
+                                 nonce, nonceLen, ad, adLen);
+}
+
+SECStatus
+chacha20_poly1305_Decrypt(void *cx, unsigned char *output,
+                         unsigned int *outputLen, unsigned int maxOutputLen,
+                         const unsigned char *input, unsigned int inputLen,
+                         const unsigned char *nonce, unsigned int nonceLen,
+                         const unsigned char *ad, unsigned int adLen)
+{
+    return ChaCha20Poly1305_Open((ChaCha20Poly1305Context *)cx, output,
+                                 outputLen, maxOutputLen, input, inputLen,
+                                 nonce, nonceLen, ad, adLen);
 }
 
 SECStatus
@@ -1436,7 +1499,7 @@ bltest_aes_init(bltestCipherInfo *cipherInfo, PRBool encrypt)
     int minorMode;
     int i;
     int keylen   = aesp->key.buf.len;
-    int blocklen = AES_BLOCK_SIZE; 
+    unsigned int blocklen = AES_BLOCK_SIZE;
     PRIntervalTime time1, time2;
     unsigned char *params;
     int len;
@@ -1578,6 +1641,21 @@ bltest_seed_init(bltestCipherInfo *cipherInfo, PRBool encrypt)
 }
 
 SECStatus
+bltest_chacha20_init(bltestCipherInfo *cipherInfo, PRBool encrypt)
+{
+    const unsigned int tagLen = 16;
+    const bltestSymmKeyParams *sk = &cipherInfo->params.sk;
+    cipherInfo->cx = ChaCha20Poly1305_CreateContext(sk->key.buf.data,
+                                                    sk->key.buf.len, tagLen);
+
+    if (encrypt)
+	cipherInfo->cipher.aeadCipher = chacha20_poly1305_Encrypt;
+    else
+	cipherInfo->cipher.aeadCipher = chacha20_poly1305_Decrypt;
+    return SECSuccess;
+}
+
+SECStatus
 bltest_rsa_init(bltestCipherInfo *cipherInfo, PRBool encrypt)
 {
     int i;
@@ -1634,6 +1712,8 @@ bltest_rsa_init(bltestCipherInfo *cipherInfo, PRBool encrypt)
         case bltestRSA_OAEP:
             cipherInfo->cipher.pubkeyCipher = encrypt ? rsa_encryptOAEP
                                                       : rsa_decryptOAEP;
+            break;
+        default:
             break;
     }
     return SECSuccess;
@@ -2226,6 +2306,11 @@ cipherInit(bltestCipherInfo *cipherInfo, PRBool encrypt)
 			  cipherInfo->input.pBuf.len);
 	return bltest_seed_init(cipherInfo, encrypt);
 	break;
+    case bltestCHACHA20:
+	outlen = cipherInfo->input.pBuf.len + (encrypt ? 16 : 0);
+	SECITEM_AllocItem(cipherInfo->arena, &cipherInfo->output.buf, outlen);
+	return bltest_chacha20_init(cipherInfo, encrypt);
+	break;
     case bltestRSA:
     case bltestRSA_OAEP:
     case bltestRSA_PSS:
@@ -2376,6 +2461,55 @@ cipherDoOp(bltestCipherInfo *cipherInfo)
             }
         }
         TIMEFINISH(cipherInfo->optime, 1.0);
+    } else if (is_aeadCipher(cipherInfo->mode)) {
+        const unsigned char *input = cipherInfo->input.pBuf.data;
+        unsigned int inputLen = cipherInfo->input.pBuf.len;
+        unsigned char *output = cipherInfo->output.pBuf.data;
+        unsigned int outputLen;
+        bltestSymmKeyParams *sk = &cipherInfo->params.sk;
+        bltestAuthSymmKeyParams *ask = &cipherInfo->params.ask;
+
+        TIMESTART();
+        rv = (*cipherInfo->cipher.aeadCipher)(
+                cipherInfo->cx,
+                output, &outputLen, maxLen,
+                input, inputLen,
+                sk->iv.buf.data, sk->iv.buf.len,
+                ask->aad.buf.data, ask->aad.buf.len);
+        CHECKERROR(rv, __LINE__);
+        cipherInfo->output.pBuf.len = outputLen;
+        TIMEFINISH(cipherInfo->optime, 1.0);
+
+        cipherInfo->repetitions = 0;
+        if (cipherInfo->repetitionsToPerfom != 0) {
+            TIMESTART();
+            for (i=0; i<cipherInfo->repetitionsToPerfom; i++,
+                     cipherInfo->repetitions++) {
+                rv = (*cipherInfo->cipher.aeadCipher)(
+                        cipherInfo->cx,
+                        output, &outputLen, maxLen,
+                        input, inputLen,
+                        sk->iv.buf.data, sk->iv.buf.len,
+                        ask->aad.buf.data, ask->aad.buf.len);
+                CHECKERROR(rv, __LINE__);
+            }
+        } else {
+            int opsBetweenChecks = 0;
+            TIMEMARK(cipherInfo->seconds);
+            while (! (TIMETOFINISH())) {
+                int j = 0;
+                for (;j < opsBetweenChecks;j++) {
+                    (*cipherInfo->cipher.aeadCipher)(
+                            cipherInfo->cx,
+                            output, &outputLen, maxLen,
+                            input, inputLen,
+                            sk->iv.buf.data, sk->iv.buf.len,
+                            ask->aad.buf.data, ask->aad.buf.len);
+                }
+                cipherInfo->repetitions += j;
+            }
+        }
+        TIMEFINISH(cipherInfo->optime, 1.0);
     } else if (is_pubkeyCipher(cipherInfo->mode)) {
         TIMESTART();
         rv = (*cipherInfo->cipher.pubkeyCipher)(cipherInfo->cx,
@@ -2477,6 +2611,10 @@ cipherFinish(bltestCipherInfo *cipherInfo)
     case bltestSEED_CBC:
 	SEED_DestroyContext((SEEDContext *)cipherInfo->cx, PR_TRUE);
 	break;
+    case bltestCHACHA20:
+	ChaCha20Poly1305_DestroyContext((ChaCha20Poly1305Context *)
+                                        cipherInfo->cx, PR_TRUE);
+	break;
     case bltestRC2_ECB:
     case bltestRC2_CBC:
 	RC2_DestroyContext((RC2Context *)cipherInfo->cx, PR_TRUE);
@@ -2569,8 +2707,6 @@ printPR_smpString(const char *sformat, char *reportStr,
         fprintf(stdout, sformat, reportStr);
         PR_smprintf_free(reportStr);
     } else {
-        int prnRes;
-        LL_L2I(prnRes, rNum);
         fprintf(stdout, nformat, rNum);
     }
 }
@@ -2791,8 +2927,8 @@ mode_str_to_hash_alg(const SECItem *modeStr)
         case bltestSHA256: return HASH_AlgSHA256;
         case bltestSHA384: return HASH_AlgSHA384;
         case bltestSHA512: return HASH_AlgSHA512;
+        default: return HASH_AlgNULL;
     }
-    return HASH_AlgNULL;
 }
 
 void
@@ -2810,6 +2946,7 @@ get_params(PLArenaPool *arena, bltestParams *params,
 #endif
     switch (mode) {
     case bltestAES_GCM:
+    case bltestCHACHA20:
 	sprintf(filename, "%s/tests/%s/%s%d", testdir, modestr, "aad", j);
 	load_file_data(arena, &params->ask.aad, filename, bltestBinary);
     case bltestDES_CBC:
@@ -3004,7 +3141,7 @@ blapi_selftest(bltestCipherMode *modes, int numModes, int inoff, int outoff,
     bltestIO pt, ct;
     bltestCipherMode mode;
     bltestParams *params;
-    int i, j, nummodes, numtests;
+    unsigned int i, j, nummodes, numtests;
     char *modestr;
     char filename[256];
     PLArenaPool *arena;
@@ -3457,13 +3594,12 @@ static secuCommandFlag bltest_options[] =
 
 int main(int argc, char **argv)
 {
-    char *infileName, *outfileName, *keyfileName, *ivfileName;
     SECStatus rv = SECFailure;
 
-    double              totalTime;
+    double              totalTime = 0.0;
     PRIntervalTime      time1, time2;
     PRFileDesc          *outfile = NULL;
-    bltestCipherInfo    *cipherInfoListHead, *cipherInfo;
+    bltestCipherInfo    *cipherInfoListHead, *cipherInfo = NULL;
     bltestIOMode        ioMode;
     int                 bufsize, exponent, curThrdNum;
 #ifndef NSS_DISABLE_ECC
@@ -3511,8 +3647,6 @@ int main(int argc, char **argv)
 
     cipherInfo = PORT_ZNew(bltestCipherInfo);
     cipherInfoListHead = cipherInfo;
-    /* set some defaults */
-    infileName = outfileName = keyfileName = ivfileName = NULL;
 
     /* Check the number of commands entered on the command line. */
     commandsEntered = 0;
@@ -3557,7 +3691,7 @@ int main(int argc, char **argv)
 	unsigned int keySize = 1024;
 	unsigned long exponent = 65537;
 	int rounds = 1;
-	int ret;
+	int ret = -1;
 	
 	if (bltest.options[opt_KeySize].activated) {
 	    keySize = PORT_Atoi(bltest.options[opt_KeySize].arg);
@@ -3712,8 +3846,10 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s: You must specify a signature file with -f.\n",
                 progName);
 
-      print_usage:
-        PORT_Free(cipherInfo);
+print_usage:
+        if (cipherInfo) {
+            PORT_Free(cipherInfo);
+        }
         Usage();
     }
 
@@ -3756,7 +3892,8 @@ int main(int argc, char **argv)
         /* Set up an encryption key. */
         keysize = 0;
         file = NULL;
-        if (is_symmkeyCipher(cipherInfo->mode)) {
+        if (is_symmkeyCipher(cipherInfo->mode) ||
+	    is_aeadCipher(cipherInfo->mode)) {
             char *keystr = NULL;  /* if key is on command line */
             if (bltest.options[opt_Key].activated) {
                 if (bltest.options[opt_CmdLine].activated) {

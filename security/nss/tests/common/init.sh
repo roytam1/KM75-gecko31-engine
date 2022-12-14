@@ -76,7 +76,6 @@ if [ -z "${INIT_SOURCED}" -o "${INIT_SOURCED}" != "TRUE" ]; then
 
         CERT_EXTENSIONS_DIR=${HOSTDIR}/cert_extensions
         STAPLINGDIR=${HOSTDIR}/stapling
-        SSLGTESTDIR=${HOSTDIR}/ssl_gtests
 
         PWFILE=${HOSTDIR}/tests.pw
         NOISE_FILE=${HOSTDIR}/tests_noise
@@ -235,7 +234,7 @@ if [ -z "${INIT_SOURCED}" -o "${INIT_SOURCED}" != "TRUE" ]; then
     HTML_FAILED='</TD><TD bgcolor=red>Failed</TD><TR>'
     HTML_FAILED_CORE='</TD><TD bgcolor=red>Failed Core</TD><TR>'
     HTML_PASSED='</TD><TD bgcolor=lightGreen>Passed</TD><TR>'
-    HTML_UNKNOWN='</TD><TD>Unknown/TD><TR>'
+    HTML_UNKNOWN='</TD><TD>Unknown</TD><TR>'
     TABLE_ARGS=
 
 
@@ -539,7 +538,6 @@ if [ -z "${INIT_SOURCED}" -o "${INIT_SOURCED}" != "TRUE" ]; then
     R_EXT_CLIENTDIR=../ext_client
     R_CERT_EXT=../cert_extensions
     R_STAPLINGDIR=../stapling
-    R_SSLGTESTDIR=../ssl_gtests
 
     #
     # profiles are either paths or domains depending on the setting of

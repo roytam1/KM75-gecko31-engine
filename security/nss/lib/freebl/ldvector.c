@@ -286,21 +286,25 @@ static const struct FREEBLVectorStr vector =
 
     EC_FillParams,
     EC_DecodeParams,
-    EC_CopyParams
+    EC_CopyParams,
 
     /* End of Version 3.017 */
+
+    ChaCha20Poly1305_InitContext,
+    ChaCha20Poly1305_CreateContext,
+    ChaCha20Poly1305_DestroyContext,
+    ChaCha20Poly1305_Seal,
+    ChaCha20Poly1305_Open
+
+    /* End of Version 3.018 */
 };
 
 const FREEBLVector *
 FREEBL_GetVector(void)
 {
-    extern const char __nss_freebl_rcsid[];
-    extern const char __nss_freebl_sccsid[];
+#define NSS_VERSION_VARIABLE __nss_freebl_version
+#include "verref.h"
 
-    /* force a reference that won't get optimized away */
-    volatile char c;
-
-    c = __nss_freebl_rcsid[0] + __nss_freebl_sccsid[0];
 #ifdef FREEBL_NO_DEPEND
     FREEBL_InitStubs();
 #endif
