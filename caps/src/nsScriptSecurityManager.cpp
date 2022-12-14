@@ -1168,6 +1168,7 @@ nsScriptSecurityManager::GetSubjectPrincipal(JSContext *cx,
     // or the one associated with its global.
     MOZ_ASSERT(!!compartment);
 
+	if (!compartment) return nullptr;
     JSPrincipals *principals = JS_GetCompartmentPrincipals(compartment);
     return nsJSPrincipals::get(principals);
 }

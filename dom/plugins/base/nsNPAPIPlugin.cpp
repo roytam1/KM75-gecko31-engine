@@ -267,7 +267,7 @@ nsNPAPIPlugin::RunPluginOOP(const nsPluginTag *aPluginTag)
 #endif
 #endif
 
-#ifdef XP_WIN
+/*#ifdef XP_WIN
   // On Windows Vista+, we force Flash to run in OOPP mode because Adobe
   // doesn't test Flash in-process and there are known stability bugs.
   if (aPluginTag->mIsFlashPlugin && IsVistaOrLater()) {
@@ -278,7 +278,7 @@ nsNPAPIPlugin::RunPluginOOP(const nsPluginTag *aPluginTag)
     return true;
 #endif
   }
-#endif
+#endif*/
 
   nsIPrefBranch* prefs = Preferences::GetRootBranch();
   if (!prefs) {

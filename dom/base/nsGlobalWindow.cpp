@@ -7056,6 +7056,7 @@ NS_IMETHODIMP
 nsGlobalWindow::GetWindowRoot(nsIDOMEventTarget **aWindowRoot)
 {
   nsCOMPtr<nsPIWindowRoot> root = GetTopWindowRoot();
+  NS_ENSURE_TRUE(root, NS_ERROR_FAILURE);
   return CallQueryInterface(root, aWindowRoot);
 }
 

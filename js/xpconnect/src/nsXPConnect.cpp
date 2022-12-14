@@ -50,7 +50,8 @@ NS_IMPL_ISUPPORTS(nsXPConnect,
                   nsIXPConnect,
                   nsISupportsWeakReference,
                   nsIThreadObserver,
-                  nsIJSRuntimeService)
+                  nsIJSRuntimeService,
+                  nsIJSContextStack)
 
 nsXPConnect* nsXPConnect::gSelf = nullptr;
 bool         nsXPConnect::gOnceAliveNowDead = false;
@@ -1276,6 +1277,19 @@ nsXPConnect::GetPrincipal(JSObject* obj, bool allowShortCircuit) const
     }
 
     return nullptr;
+}
+
+NS_IMETHODIMP
+nsXPConnect::Push(JSContext *aJSContext)
+{
+  return PushJSContextNoScriptContext(aJSContext) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+NS_IMETHODIMP
+nsXPConnect::Pop(JSContext **aJSContext)
+{
+  PopJSContextNoScriptContext();//*aJSContext = XPCJSRuntime::Get()->GetJSContextStack()->Pop();
+  return NS_OK;
 }
 
 NS_IMETHODIMP

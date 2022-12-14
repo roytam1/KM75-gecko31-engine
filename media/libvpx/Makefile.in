@@ -94,6 +94,10 @@ quantize_ssse3.$(OBJ_SUFFIX): vp8_asm_enc_offsets.asm
 
 ifdef VPX_NEED_OBJ_INT_EXTRACT
 
+ifeq (WINNT_,$(OS_TARGET)_$(GNU_CC))
+vpx_scale_asm_offsets.$(OBJ_SUFFIX): CFLAGS += -GL- 
+endif
+
 vpx_scale_asm_offsets.asm: vpx_scale_asm_offsets.$(OBJ_SUFFIX) $(HOST_PROGRAM)
 	./$(HOST_PROGRAM) $(VPX_OIE_FORMAT) $< \
 	    $(if $(VPX_AS_CONVERSION),| $(VPX_AS_CONVERSION)) > $@
@@ -101,6 +105,10 @@ vpx_scale_asm_offsets.asm: vpx_scale_asm_offsets.$(OBJ_SUFFIX) $(HOST_PROGRAM)
 # Filter out this object, because we don't want to link against it.
 # It was generated solely so it could be parsed by obj_int_extract.
 OBJS := $(filter-out vpx_scale_asm_offsets.$(OBJ_SUFFIX),$(OBJS))
+
+ifeq (WINNT_,$(OS_TARGET)_$(GNU_CC))
+vp8_asm_enc_offsets.$(OBJ_SUFFIX): CFLAGS += -GL-
+endif
 
 vp8_asm_enc_offsets.asm: vp8_asm_enc_offsets.$(OBJ_SUFFIX) $(HOST_PROGRAM)
 	./$(HOST_PROGRAM) $(VPX_OIE_FORMAT) $< \

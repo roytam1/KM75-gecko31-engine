@@ -111,7 +111,7 @@ ifdef NS_USE_GCC
 	ifeq (11,$(ALLOW_OPT_CODE_SIZE)$(OPT_CODE_SIZE))
 		OPTIMIZER += -Os
 	else
-		OPTIMIZER += -O2
+		OPTIMIZER += -O2 -GFL
 	endif
 	DEFINES    += -UDEBUG -DNDEBUG
     else

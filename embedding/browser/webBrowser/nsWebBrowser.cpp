@@ -36,6 +36,7 @@
 #include "Layers.h"
 #include "gfxContext.h"
 #include "nsILoadContext.h"
+#include "gfxPrefs.h"
 
 // for painting the background window
 #include "mozilla/LookAndFeel.h"
@@ -1162,6 +1163,7 @@ NS_IMETHODIMP nsWebBrowser::Create()
     NS_ENSURE_SUCCESS(rv, rv);
 
     // get the system default window background colour
+    gfxPrefs::GetSingleton();
     LookAndFeel::GetColor(LookAndFeel::eColorID_WindowBackground,
                           &mBackgroundColor);
 

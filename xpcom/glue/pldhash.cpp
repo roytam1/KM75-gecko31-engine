@@ -636,6 +636,8 @@ PL_DHashTableRawRemove(PLDHashTable *table, PLDHashEntryHdr *entry)
 uint32_t
 PL_DHashTableEnumerate(PLDHashTable *table, PLDHashEnumerator etor, void *arg)
 {
+    MOZ_ASSERT(table != nullptr, "table must not be null");
+    if (!table) return 0;
     INCREMENT_RECURSION_LEVEL(table);
 
     char *entryAddr = table->entryStore;

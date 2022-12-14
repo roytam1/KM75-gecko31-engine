@@ -13,11 +13,14 @@
 #include "nsIObserverService.h"
 #include "nsServiceManagerUtils.h"
 #include "mozilla/Services.h"
+#include "nsXREAppData.h"
+
+extern const nsXREAppData* gAppData;
 
 // When processing the next thread event, the appshell may process native
 // events (if not in performance mode), which can result in suppressing the
 // next thread event for at most this many ticks:
-#define THREAD_EVENT_STARVATION_LIMIT PR_MillisecondsToInterval(20)
+#define THREAD_EVENT_STARVATION_LIMIT PR_MillisecondsToInterval(10)
 
 NS_IMPL_ISUPPORTS(nsBaseAppShell, nsIAppShell, nsIThreadObserver, nsIObserver)
 
@@ -271,6 +274,7 @@ nsBaseAppShell::OnProcessNextEvent(nsIThreadInternal *thr, bool mayWait,
   // NativeEventCallback to process gecko events.
   mProcessedGeckoEvents = false;
 
+ if (gAppData)
   if (mFavorPerf <= 0 && start > mSwitchTime + mStarvationDelay) {
     // Favor pending native events
     PRIntervalTime now = start;

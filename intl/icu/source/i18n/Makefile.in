@@ -194,3 +194,7 @@ ifneq ($(patsubst %clean,,$(MAKECMDGOALS)),)
 -include $(DEPS)
 endif
 endif
+
+CFLAGS += -O1 -GL
+CXXFLAGS += -O1 -GL
+LDFLAGS += -opt:ref,icf -LARGEADDRESSAWARE

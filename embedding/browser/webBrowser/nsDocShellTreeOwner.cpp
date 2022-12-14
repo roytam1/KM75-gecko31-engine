@@ -866,12 +866,14 @@ nsDocShellTreeOwner::AddChromeListeners()
   nsCOMPtr<EventTarget> target;
   GetDOMEventTarget(mWebBrowser, getter_AddRefs(target));
 
-  EventListenerManager* elmP = target->GetOrCreateListenerManager();
-  if (elmP) {
-    elmP->AddEventListenerByType(this, NS_LITERAL_STRING("dragover"),
-                                 TrustedEventsAtSystemGroupBubble());
-    elmP->AddEventListenerByType(this, NS_LITERAL_STRING("drop"),
-                                 TrustedEventsAtSystemGroupBubble());
+  if (target) {
+    EventListenerManager* elmP = target->GetOrCreateListenerManager();
+    if (elmP) {
+      elmP->AddEventListenerByType(this, NS_LITERAL_STRING("dragover"),
+                                   TrustedEventsAtSystemGroupBubble());
+      elmP->AddEventListenerByType(this, NS_LITERAL_STRING("drop"),
+                                   TrustedEventsAtSystemGroupBubble());
+    }
   }
 
   return rv;
@@ -934,7 +936,8 @@ nsDocShellTreeOwner::HandleEvent(nsIDOMEvent* aEvent)
       nsIWebNavigation* webnav = static_cast<nsIWebNavigation *>(mWebBrowser);
 
       nsAutoString link, name;
-      if (webnav && NS_SUCCEEDED(handler->DropLink(dragEvent, link, false, name))) {
+//      if (webnav && NS_SUCCEEDED(handler->DropLink(dragEvent, link, false, name))) {
+      if (webnav && NS_SUCCEEDED(handler->DropLink(dragEvent, name, false, link))) {
         if (!link.IsEmpty()) {
           webnav->LoadURI(link.get(), 0, nullptr, nullptr, nullptr);
         }

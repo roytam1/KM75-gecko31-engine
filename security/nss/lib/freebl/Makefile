@@ -133,7 +133,7 @@ else
     DEFINES += -DMP_ASSEMBLY_MULTIPLY -DMP_ASSEMBLY_SQUARE 
     DEFINES += -DMP_ASSEMBLY_DIV_2DX1D -DMP_USE_UINT_DIGIT -DMP_NO_MP_WORD
     ifdef BUILD_OPT
-	OPTIMIZER += -Ox  # maximum optimization for freebl
+	OPTIMIZER += -Ox -GFL  # maximum optimization for freebl
     endif
     # The Intel AES assembly code requires Visual C++ 2010.
     # if $(_MSC_VER) >= 1600 (Visual C++ 2010)
@@ -155,7 +155,7 @@ ifdef NS_USE_GCC
 else
 # MSVC
     ifdef BUILD_OPT
-	OPTIMIZER += -Ox  # maximum optimization for freebl
+	OPTIMIZER += -Ox -GFL  # maximum optimization for freebl
     endif
     ASFILES  = arcfour-amd64-masm.asm mpi_amd64_masm.asm mp_comba_amd64_masm.asm
     DEFINES += -DNSS_BEVAND_ARCFOUR -DMPI_AMD64 -DMP_ASSEMBLY_MULTIPLY

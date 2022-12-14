@@ -101,6 +101,7 @@ static NS_DEFINE_CID(kAppShellCID, NS_APPSHELL_CID);
 
 #ifdef XP_WIN
 static const wchar_t kShellLibraryName[] =  L"shell32.dll";
+#include "mozilla/widget/AudioSession.h"
 #endif
 
 nsresult
@@ -165,6 +166,10 @@ XRE_InitEmbedding2(nsIFile *aLibXULDirectory,
 
   startupNotifier->Observe(nullptr, APPSTARTUP_TOPIC, nullptr);
 
+#ifdef XP_WIN
+  mozilla::widget::StartAudioSession();
+#endif
+
   return NS_OK;
 }
 
@@ -183,6 +188,10 @@ XRE_TermEmbedding()
 
   NS_ASSERTION(gDirServiceProvider,
                "XRE_TermEmbedding without XRE_InitEmbedding");
+
+#ifdef XP_WIN
+  mozilla::widget::StopAudioSession();
+#endif
 
   gDirServiceProvider->DoShutdown();
   NS_ShutdownXPCOM(nullptr);

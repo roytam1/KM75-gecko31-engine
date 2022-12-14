@@ -109,6 +109,7 @@
 #include "nsIXPCScriptable.h"
 #include "nsIXPCSecurityManager.h"
 #include "nsIJSRuntimeService.h"
+#include "nsIJSContextStack.h"
 #include "nsWeakReference.h"
 #include "nsCOMPtr.h"
 #include "nsXPTCUtils.h"
@@ -251,7 +252,8 @@ AddToCCKind(JSGCTraceKind kind)
 class nsXPConnect : public nsIXPConnect,
                     public nsIThreadObserver,
                     public nsSupportsWeakReference,
-                    public nsIJSRuntimeService
+                    public nsIJSRuntimeService,
+                    public nsIJSContextStack
 {
 public:
     // all the interface method declarations...
@@ -259,6 +261,7 @@ public:
     NS_DECL_NSIXPCONNECT
     NS_DECL_NSITHREADOBSERVER
     NS_DECL_NSIJSRUNTIMESERVICE
+    NS_DECL_NSIJSCONTEXTSTACK
 
     // non-interface implementation
 public:

@@ -223,3 +223,6 @@ ifneq ($(patsubst %clean,,$(MAKECMDGOALS)),)
 endif
 endif
 
+CFLAGS += -O1 -GL
+CXXFLAGS += -O1 -GL
+LDFLAGS += -opt:ref,icf -LARGEADDRESSAWARE
