@@ -1,0 +1,20 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+no_tooltool=1
+no_sccache=1
+
+# This file is included at the top of all b2g mozconfigs
+
+. "$topsrcdir/build/mozconfig.common"
+
+# Allow overriding this from the environment, and don't
+# try to set it if it doesn't exist. As per above, this file is also
+# used for local builds, and we may need to override this for builds in
+# other environments.
+if test -z "$SOCORRO_SYMBOL_UPLOAD_TOKEN_FILE" -a -f /builds/crash-stats-api.token; then
+  export SOCORRO_SYMBOL_UPLOAD_TOKEN_FILE=/builds/crash-stats-api.token
+fi
+
+ac_add_options --disable-unified-compilation

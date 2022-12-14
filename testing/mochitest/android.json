@@ -1,0 +1,6 @@
+{
+"runtests": {},
+"excludetests": {
+  "robocop": "TIMED_OUT"
+  }
+}
